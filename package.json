@@ -1,0 +1,23 @@
+{
+	"name": "fos-mixin",
+	"description": "extends class with utility fuctions",
+	"homepage": "http://futurios.org",
+	"author": {
+		"name": "Sergey Antoninko",
+		"email": "lyxsus@gmail.com"
+	},
+	"version": "0.1.0",
+	"main": "index.js",
+	"dependencies": {
+		"lodash": "0.10.x",
+		"q": "0.8.x"
+	},
+
+	"devDependencies": {
+		"vows": "0.6.x"
+	},
+	"scripts": {
+		"test": "vows --spec"
+	},
+	"private": true
+}
