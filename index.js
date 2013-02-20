@@ -5,7 +5,7 @@ var	Q = require ('q'),
 var Lock = {
 	disposing: null,
 	disposeDelayed: null,
-	disposeDelay: 0,
+	disposeDelay: 1000 * 60,
 
 	locks: null,
 	locked: null,
