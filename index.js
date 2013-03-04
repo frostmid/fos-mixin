@@ -29,7 +29,7 @@ var Lock = {
 			if (this.locked.indexOf (locker) === -1) {
 				this.locked [this.locked.length] = locker;
 			} else {
-				console.warn ('Already locked', this.id, 'by', locker.id);
+				// console.warn ('Already locked', this.id, 'by', locker.id);
 			}
 		}
 		
@@ -39,7 +39,7 @@ var Lock = {
 			if (locker.locks.indexOf (this) === -1) {
 				locker.locks [locker.locks.length] = this;
 			} else {
-				console.warn ('Locker', locker.id, 'already locks', this.id);
+				// console.warn ('Locker', locker.id, 'already locks', this.id);
 			}
 		}
 
@@ -116,6 +116,13 @@ var Lock = {
 		}
 
 		this.disposeDelayed = setTimeout (_.bind (function () {
+			clearTimeout (this.disposeDelayed);
+			this.disposeDelayed = null;
+
+			if (this.locked && this.locked.length) {
+				return;
+			}
+
 			this.disposing = true;
 			this.dispose ();
 			cleanup ();
@@ -171,6 +178,10 @@ var Ready = {
 		* Switch object to ready state
 	*/
 	returnReady: function () {
+		if (this.disposing) {
+			return;
+		}
+
 		this.error = null;
 		this.isReady = true;
 		this.fetching = false;
