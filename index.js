@@ -97,6 +97,11 @@ var Lock = {
 			return;
 		}
 
+		if (this.disposeDelayed) {
+			clearTimeout (this.disposeDelayed);
+			this.disposeDelayed = null;
+		}
+
 		var cleanup = _.bind (function () {
 			if (this.locks) {
 				_.each (this.locks, function (o) {
@@ -109,16 +114,7 @@ var Lock = {
 			return this;
 		}, this);
 
-
-		if (this.disposeDelayed) {
-			clearTimeout (this.disposeDelayed);
-			this.disposeDelayed = null;
-		}
-
 		this.disposeDelayed = setTimeout (_.bind (function () {
-			clearTimeout (this.disposeDelayed);
-			this.disposeDelayed = null;
-
 			if (this.locked && this.locked.length) {
 				return;
 			}
