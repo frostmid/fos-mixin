@@ -2,10 +2,12 @@ var	Q = require ('q'),
 	_ = require ('lodash'),
 	EventEmitter = require ('events').EventEmitter;
 
+Q.longStackJumpLimit = 0;
+
 var Lock = {
 	disposing: null,
 	disposeDelayed: null,
-	disposeDelay: 1000 * 60,
+	disposeDelay: 1000,
 
 	locks: null,
 	locked: null,
