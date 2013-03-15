@@ -87,7 +87,9 @@ var Lock = {
 		* Release object from "locker" lock and dispose, if nobody locks it anymore
 	*/
 	release: function (by) {
-		this.unlock (by);
+		if (by) {
+			this.unlock (by);
+		}
 
 		if (this.locked && this.locked.length) {
 			return;
@@ -168,6 +170,8 @@ var Ready = {
 	returnError: function (error) {
 		this.error = error;
 		this.fetching = false;
+
+		this.release ();
 
 		throw error;
 	},
