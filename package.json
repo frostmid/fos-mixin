@@ -9,8 +9,8 @@
 	"version": "0.1.0",
 	"main": "index.js",
 	"dependencies": {
-		"lodash": "0.10.x",
-		"q": "0.8.x"
+		"lodash": "*",
+		"q": "*"
 	},
 
 	"devDependencies": {

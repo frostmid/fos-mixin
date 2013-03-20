@@ -189,6 +189,7 @@ var Ready = {
 		this.fetching = false;
 
 		this.emit ('ready', this);
+		this.removeAllListeners ('ready');
 
 		return this;
 	},
