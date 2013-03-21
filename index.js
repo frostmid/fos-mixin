@@ -171,6 +171,7 @@ var Ready = {
 		this.error = error;
 		this.fetching = false;
 
+		this.removeAllListeners ('ready');
 		this.release ();
 
 		throw error;
