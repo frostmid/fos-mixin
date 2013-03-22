@@ -147,15 +147,11 @@ var Ready = {
 		if (this.isReady) return this;
 
 		if (this.fetching) {
-			var deferred = Q.defer ();
-
-			this.once ('ready', deferred.resolve);
-
-			return deferred.promise;
+			return this.fetching.promise;
 		}
 
 		if (this.fetch) {
-			this.fetching = true;
+			this.fetching = Q.defer ();
 
 			return Q.when (this.fetch ())
 				.then (_.bind (this.fetched, this))
@@ -169,9 +165,12 @@ var Ready = {
 	*/
 	returnError: function (error) {
 		this.error = error;
-		this.fetching = false;
 
-		this.removeAllListeners ('ready');
+		if (this.fetching) {
+			this.fetching.reject (error);
+			this.fetching = false;
+		}
+
 		this.release ();
 
 		throw error;
@@ -187,10 +186,11 @@ var Ready = {
 
 		this.error = null;
 		this.isReady = true;
-		this.fetching = false;
 
-		this.emit ('ready', this);
-		this.removeAllListeners ('ready');
+		if (this.fetching) {
+			this.fetching.resolve (this);
+			this.fetching = false;
+		}
 
 		return this;
 	},
@@ -207,14 +207,27 @@ var Ready = {
 		* Refetch source
 	*/
 	refetch: function () {
-		if (this.fetching) return;
+		if (this.fetching) {
+			if (!this.refetch) {
+				this.refetch = true;
 
-		this.fetching = true;
+				var refetch = _.bind (this.refetch, this);
+
+				this.fetching.promise.then (function () {
+					_.delay (refetch, 100);
+				});
+			}
+
+
+			return this.fetching;
+		}
+
+		this.fetching = Q.defer ();
 
 		return Q.when (this.fetch ())
 			.then (_.bind (this.fetched, this))
 			.then (_.bind (this.returnReady, this))
-			.fail (_.bind (this.returnError, this))
+			.fail (_.bind (this.returnError, this));
 	}
 };
 
