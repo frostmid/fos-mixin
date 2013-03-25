@@ -211,11 +211,11 @@ var Ready = {
 			if (!this.refetch) {
 				this.refetch = true;
 
-				var refetch = _.bind (this.refetch, this);
+				var refetch = _.delay (_.bind (this.refetch, this), 250);
 
-				this.fetching.promise.then (function () {
-					_.delay (refetch, 100);
-				});
+				this.fetching.promise
+					.then (refetch)
+					.fail (refetch);
 			}
 
 
