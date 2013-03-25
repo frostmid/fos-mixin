@@ -167,13 +167,13 @@ var Ready = {
 		this.error = error;
 
 		if (this.fetching) {
-			this.fetching.reject (error);
+			this.fetching.resolve (this);
 			this.fetching = false;
 		}
 
 		this.release ();
 
-		throw error;
+		return this;
 	},
 
 	/*
