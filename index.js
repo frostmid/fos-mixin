@@ -1,8 +1,8 @@
-var	Q = require ('q'),
+var	Promises = require ('vow'),
 	_ = require ('lodash'),
 	EventEmitter = require ('events').EventEmitter;
 
-Q.longStackJumpLimit = 0;
+// Promises.longStackJumpLimit = 0;
 
 var Lock = {
 	disposing: null,
@@ -147,13 +147,13 @@ var Ready = {
 		if (this.isReady) return this;
 
 		if (this.fetching) {
-			return this.fetching.promise;
+			return this.fetching;
 		}
 
 		if (this.fetch) {
-			this.fetching = Q.defer ();
+			this.fetching = Promises.promise ();
 
-			return Q.when (this.fetch ())
+			return Promises.when (this.fetch ())
 				.then (_.bind (this.fetched, this))
 				.then (_.bind (this.returnReady, this))
 				.fail (_.bind (this.returnError, this));
@@ -167,7 +167,7 @@ var Ready = {
 		this.error = error;
 
 		if (this.fetching) {
-			this.fetching.resolve (this);
+			this.fetching.fulfill (this);
 			this.fetching = false;
 		}
 
@@ -188,7 +188,7 @@ var Ready = {
 		this.isReady = true;
 
 		if (this.fetching) {
-			this.fetching.resolve (this);
+			this.fetching.fulfill (this);
 			this.fetching = false;
 		}
 
@@ -213,7 +213,7 @@ var Ready = {
 
 				var refetch = _.delay (_.bind (this.refetch, this), 250);
 
-				this.fetching.promise
+				this.fetching
 					.then (refetch)
 					.fail (refetch);
 			}
@@ -222,9 +222,9 @@ var Ready = {
 			return this.fetching;
 		}
 
-		this.fetching = Q.defer ();
+		this.fetching = Promises.promise ();
 
-		return Q.when (this.fetch ())
+		return Promises.when (this.fetch ())
 			.then (_.bind (this.fetched, this))
 			.then (_.bind (this.returnReady, this))
 			.fail (_.bind (this.returnError, this));

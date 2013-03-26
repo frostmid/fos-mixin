@@ -10,7 +10,7 @@
 	"main": "index.js",
 	"dependencies": {
 		"lodash": "*",
-		"q": "*"
+		"vow": "*"
 	},
 
 	"devDependencies": {
