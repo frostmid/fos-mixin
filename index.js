@@ -97,7 +97,12 @@ var Lock = {
 		
 
 		if (this.disposing) {
-			console.warn ('Already disposing #' + this.id);
+			if (this.id) {
+				console.warn ('Already disposing #' + this.id);
+			} else {
+				console.warn ('Already disposing', this);
+			}
+			
 			return;
 		}
 
@@ -122,8 +127,17 @@ var Lock = {
 			if (this.locked && this.locked.length) {
 				return;
 			}
+			this.disposeDelayed = null;
+
+			this.removeAllListeners ();
+
+			if (this.fetching) {
+				this.fetching.reject ('fetching broke by dispose');
+			}
+			this.fetching = null;
 
 			this.disposing = true;
+
 			this.dispose ();
 			cleanup ();
 		}, this), this.disposeDelay);
@@ -211,11 +225,11 @@ var Ready = {
 			if (!this.refetch) {
 				this.refetch = true;
 
-				var refetch = _.delay (_.bind (this.refetch, this), 250);
+				// var refetch = _.delay (_.bind (this.refetch, this), 250);
 
 				this.fetching
-					.then (refetch)
-					.fail (refetch);
+					.always (_.bind (this.refetch, this));
+					// .always (refetch);
 			}
 
 
