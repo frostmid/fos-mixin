@@ -222,26 +222,15 @@ var Ready = {
 	*/
 	refetch: function () {
 		if (this.fetching) {
-			if (!this.refetch) {
-				this.refetch = true;
-
-				// var refetch = _.delay (_.bind (this.refetch, this), 250);
-
-				this.fetching
-					.always (_.bind (this.refetch, this));
-					// .always (refetch);
-			}
-
-
 			return this.fetching;
+		} else {
+			this.fetching = Promises.promise ();
+
+			return Promises.when (this.fetch ())
+				.then (_.bind (this.fetched, this))
+				.then (_.bind (this.returnReady, this))
+				.fail (_.bind (this.returnError, this));
 		}
-
-		this.fetching = Promises.promise ();
-
-		return Promises.when (this.fetch ())
-			.then (_.bind (this.fetched, this))
-			.then (_.bind (this.returnReady, this))
-			.fail (_.bind (this.returnError, this));
 	}
 };
 
