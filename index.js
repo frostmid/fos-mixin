@@ -1,13 +1,13 @@
-var	Promises = require ('vow'),
-	_ = require ('lodash'),
+var	_ = require ('lodash'),
+	Promises = require ('vow'),
 	EventEmitter = require ('events').EventEmitter;
 
-// Promises.longStackJumpLimit = 0;
+var DEBUG = false;
 
 var Lock = {
 	disposing: null,
 	disposeDelayed: null,
-	disposeDelay: 1000,
+	disposeDelay: 5000,
 
 	locks: null,
 	locked: null,
@@ -22,6 +22,10 @@ var Lock = {
 
 		if (this.disposing) {
 			throw new Error ('Currently disposing #' + this.id);
+		}
+
+		if (locker == this) {
+			return;
 		}
 
 
@@ -53,14 +57,21 @@ var Lock = {
 	*/
 	unlock: function (locker) {
 		if (!locker) throw new Error ('Who is trying to release me?');
+		if (locker == this) return;
 
 		if (this.locked && this.locked.length) {
 			var i = this.locked.indexOf (locker);
 
 			if (i === -1) {
-				console.warn ('I was not locked by', locker, this.id);
+				if (!this.disposing && DEBUG) {
+					try {
+						throw new Error ('trace me');
+					} catch (e) {
+						console.warn ('I was not locked by', locker, this.id, e.stack);
+					}
+				}
 			} else {
-				this.locked = _.without (this.locked, locker);
+				this.locked.splice (i, 1);
 			}
 
 			if (this.locked.length == 0) {
@@ -72,9 +83,16 @@ var Lock = {
 			i = locker.locks.indexOf (this);
 
 			if (i === -1) {
-				console.warn ('You were not locking me #' + this.id);
+				if (!this.disposing && DEBUG) {
+					try {
+						throw new Error ('trace me');
+					} catch (e) {
+						console.warn ('You were not locking me #' + this.id, e.stack);
+					}
+					
+				}
 			} else {
-				locker.locks = _.without (locker.locks, this);
+				locker.locks.splice (i, 1);
 			}
 
 			if (locker.locks.length == 0) {
@@ -94,14 +112,18 @@ var Lock = {
 		if (this.locked && this.locked.length) {
 			return;
 		}
+
+		if ((typeof this.isFree == 'function') && !this.isFree ()) {
+			return;
+		}
 		
 
 		if (this.disposing) {
-			if (this.id) {
-				console.warn ('Already disposing #' + this.id);
-			} else {
-				console.warn ('Already disposing', this);
-			}
+			// if (this.id) {
+			// 	console.warn ('Already disposing #' + this.id);
+			// } else {
+			// 	console.warn ('Already disposing', this);
+			// }
 			
 			return;
 		}
@@ -111,9 +133,9 @@ var Lock = {
 			this.disposeDelayed = null;
 		}
 
-		var cleanup = _.bind (function () {
+		var cleanup = _.bind (function cleanupLocks () {
 			if (this.locks) {
-				_.each (this.locks, function (o) {
+				_.each (this.locks, function cleanupLocksRelease (o) {
 					if (o) o.release (this);
 				}, this);
 
@@ -123,12 +145,14 @@ var Lock = {
 			return this;
 		}, this);
 
-		this.disposeDelayed = setTimeout (_.bind (function () {
+		this.disposeDelayed = setTimeout (_.bind (function afterDisposeDelayed () {
 			if (this.locked && this.locked.length) {
 				return;
 			}
+
 			this.disposeDelayed = null;
 
+			this.emit ('release');
 			this.removeAllListeners ();
 
 			if (this.fetching) {
@@ -143,7 +167,24 @@ var Lock = {
 		}, this), this.disposeDelay);
 	},
 
+	forceRelease: function () {
+		if (this.disposing) return;
+
+		_.delay (_.bind (function () {
+			if (this.locked && this.locked.length) {
+				_.each (this.locked, function forceReleaseLocked (locked) {
+					if (locked) {
+						this.release (locked);
+					}
+				}, this);
+			}
+
+			this.release ();
+		}, this), this.disposeDelay);
+	},
+
 	dispose: function () {
+		console.error ('no dispose for', this);
 		throw 'Dispose behaviour not implemented';
 	}
 };
@@ -152,25 +193,49 @@ var Ready = {
 	isReady: false,
 	fetching: false,
 	error: null,
+	refetching: false,
 
 	/*
 		* If object is ready, return object. Otherwise, try to call fetch return promise, which
 		* should be resolved on "ready" event.
 	*/
-	ready: function () {
-		if (this.isReady) return this;
+	ready: function (callback) {
+		if (this.isReady) {
+			if (typeof callback == 'function') {
+				callback.call (this, this);
+			}
+
+			return this;
+		}
 
 		if (this.fetching) {
 			return this.fetching;
 		}
 
-		if (this.fetch) {
-			this.fetching = Promises.promise ();
+		// TODO: deprecated
+		// Temporary function to imitate deprecated api
+		var self = this;
+		var fixReady = function (promise) {
+			promise.ready = function promiseIsReady (callback) {
+				if (callback) {
+					promise.then (_.bind (callback, self));
+				}
 
-			return Promises.when (this.fetch ())
-				.then (_.bind (this.fetched, this))
-				.then (_.bind (this.returnReady, this))
-				.fail (_.bind (this.returnError, this));
+				return promise;
+			};
+
+			return promise;
+		};
+
+		if (this.fetch) {
+			this.fetching = fixReady (Promises.promise ());
+
+			return fixReady (
+				Promises.when (this.fetch ())
+					.then (_.bind (this.fetched, this))
+					.then (_.bind (this.returnReady, this))
+					.fail (_.bind (this.returnError, this))
+			);
 		}
 	},
 
@@ -181,8 +246,14 @@ var Ready = {
 		this.error = error;
 
 		if (this.fetching) {
-			this.fetching.fulfill (this);
+			// this.fetching.fulfill (this);
+			this.fetching.reject (error);
 			this.fetching = false;
+			this.refetching = false;
+		}
+
+		if (this.failed) {
+			return this.failed (error);
 		}
 
 		this.release ();
@@ -204,6 +275,7 @@ var Ready = {
 		if (this.fetching) {
 			this.fetching.fulfill (this);
 			this.fetching = false;
+			this.refetching = false;
 		}
 
 		return this;
@@ -214,6 +286,8 @@ var Ready = {
 	*/
 	returnNotReady: function () {
 		this.isReady = false;
+		this.fetching = false;
+		this.refetching = false;
 		return this;
 	},
 
@@ -225,14 +299,20 @@ var Ready = {
 			return this.fetching;
 		} else {
 			this.fetching = Promises.promise ();
+			this.refetching = true;
 
 			return Promises.when (this.fetch ())
 				.then (_.bind (this.fetched, this))
 				.then (_.bind (this.returnReady, this))
 				.fail (_.bind (this.returnError, this));
 		}
+	},
+
+	fetched: function () {
+		throw new Error ('Not implemented');
 	}
 };
+
 
 var Emitter = EventEmitter.prototype;
 
